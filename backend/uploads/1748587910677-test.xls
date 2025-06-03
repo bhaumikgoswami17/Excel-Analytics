@@ -1,0 +1,17 @@
+<xsl:stylesheet version="1.0" 
+	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"> 
+	<xsl:template match="/"> 
+		<Author> 
+			<xsl:variable name="eMailID" select="/Author/@EMailID"/> 
+			<xsl:attribute name="EMailID"><xsl:value-of select="$eMailID"/></xsl:attribute> 
+			<Books> 
+				<xsl:for-each select="/Author/Books/Book"> 
+					<Book> 
+						<xsl:variable name="publisherCode" select="./@PublisherCode"/> 
+						<xsl:attribute name="PublisherCode"><xsl:value-of select="$publisherCode"/></xsl:attribute> 
+					</Book> 
+				</xsl:for-each> 
+			</Books> 
+		</Author> 
+	</xsl:template> 
+</xsl:stylesheet>
