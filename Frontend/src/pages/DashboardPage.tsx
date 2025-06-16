@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, Filter, Search, Plus, User } from 'lucide-react';
+import { Upload, Filter, Search, Plus } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import HistoryCard, { HistoryItem } from '../components/HistoryCard';
@@ -9,60 +9,46 @@ import { useAuth } from '../context/AuthContext';
 const DashboardPage: React.FC = () => {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
+
+  // 🔹 Helper to generate dynamic preview image
+const chartImages = [
+  'https://tse3.mm.bing.net/th?id=OIP._549d-zwPHydvwsZi-vspAHaHa&pid=Api&P=0&h=220',
+  'https://cdn3.vectorstock.com/i/1000x1000/81/47/3d-pie-chart-vector-1068147.jpg',
+  'https://tse4.mm.bing.net/th?id=OIP.DA-QYwjqq4vmSVwJH8X59wHaEz&pid=Api&P=0&h=220',
+  'https://tse3.mm.bing.net/th?id=OIP.q1yBDrglA9cvlCvFerBxFwHaD_&pid=Api&P=0&h=220',
+  'https://tse1.mm.bing.net/th?id=OIP.EBUY-CEvJIGfqw2d6RVt0gHaEK&pid=Api&P=0&h=220'
+];
+
+const getRandomPreview = () =>
+  chartImages[Math.floor(Math.random() * chartImages.length)];
 
   useEffect(() => {
     const fetchHistory = async () => {
       setIsLoading(true);
-      
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // In a real app, fetch history from your API
-        // const response = await fetch('/api/user/history');
-        // const data = await response.json();
-        
-        // For demo, create mock data
-        const mockHistory: HistoryItem[] = [
-          {
-            id: '1',
-            fileName: 'Q1_Sales_Report.xlsx',
-            uploadDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-            chartType: 'Bar Chart',
-            previewUrl: 'https://images.pexels.com/photos/7567440/pexels-photo-7567440.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-          },
-          {
-            id: '2',
-            fileName: 'Customer_Feedback_Analysis.xlsx',
-            uploadDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-            chartType: 'Pie Chart',
-            previewUrl: 'https://images.pexels.com/photos/5473955/pexels-photo-5473955.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-          },
-          {
-            id: '3',
-            fileName: 'Marketing_Campaign_Results.xlsx',
-            uploadDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-            chartType: 'Line Chart',
-            previewUrl: 'https://images.pexels.com/photos/590041/pexels-photo-590041.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-          },
-          {
-            id: '4',
-            fileName: 'Financial_Projections_2025.xlsx',
-            uploadDate: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 14 days ago
-            chartType: '3D Scatter Plot',
-            previewUrl: 'https://images.pexels.com/photos/186461/pexels-photo-186461.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2'
-          }
-        ];
-        
-        setHistoryItems(mockHistory);
+        const response = await authFetch('/api/excel/files');
+        const files = response.files;
+
+        const formatted: HistoryItem[] = files.map((file: any) => {
+          const chartType = file.sheetName || 'Not specified';
+          return {
+            id: file._id,
+            fileName: file.fileName,
+            uploadDate: file.uploadDate,
+            chartType,
+            previewUrl: getRandomPreview()
+          };
+        });
+
+        setHistoryItems(formatted);
       } catch (error) {
         console.error('Failed to fetch history:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     fetchHistory();
   }, []);
 
@@ -72,10 +58,10 @@ const DashboardPage: React.FC = () => {
         <div className="mb-6 md:mb-0">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
           <p className="text-gray-600">
-            Welcome back, {user?.name || user?.email || 'User'}! Manage your data visualizations.
+            Welcome back, {user?.username || user?.email || 'User'}! Manage your data visualizations.
           </p>
         </div>
-        
+
         <div className="flex space-x-3">
           <Link to="/upload">
             <Button className="flex items-center">
@@ -85,7 +71,7 @@ const DashboardPage: React.FC = () => {
           </Link>
         </div>
       </div>
-      
+
       {/* Usage Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <Card className="p-6">
@@ -100,7 +86,7 @@ const DashboardPage: React.FC = () => {
             </p>
           </div>
         </Card>
-        
+
         <Card className="p-6">
           <div className="space-y-2">
             <p className="text-sm text-gray-600">Charts Created</p>
@@ -113,7 +99,7 @@ const DashboardPage: React.FC = () => {
             </p>
           </div>
         </Card>
-        
+
         <Card className="p-6">
           <div className="space-y-2">
             <p className="text-sm text-gray-600">Storage Used</p>
@@ -124,7 +110,7 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
         </Card>
-        
+
         <Card className="p-6">
           <div className="space-y-2">
             <p className="text-sm text-gray-600">Plan</p>
@@ -135,12 +121,12 @@ const DashboardPage: React.FC = () => {
           </div>
         </Card>
       </div>
-      
+
       {/* Recent Uploads */}
       <div className="mb-12">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-2 md:mb-0">Recent Uploads</h2>
-          
+
           <div className="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3">
             <div className="relative">
               <Search className="absolute top-1/2 left-3 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -150,24 +136,30 @@ const DashboardPage: React.FC = () => {
                 className="pl-10 pr-4 py-2 w-full md:w-60 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-            
+
             <Button variant="outline" className="flex items-center">
               <Filter size={16} className="mr-1" />
               <span>Filter</span>
             </Button>
           </div>
         </div>
-        
+
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         ) : historyItems.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {historyItems.map((item) => (
-              <HistoryCard key={item.id} item={item} />
-            ))}
-            
+          {historyItems.map((item) => (
+  <HistoryCard
+    key={item.id}
+    item={item}
+    onDelete={(id) => {
+      console.log('Deleting file:', id);
+      setHistoryItems((prev) => prev.filter((f) => f.id !== id));
+    }}
+  />
+))}
             <Link to="/upload" className="border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center p-6 h-full min-h-[240px] hover:bg-gray-50 transition-colors">
               <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
                 <Plus size={24} className="text-blue-600" />

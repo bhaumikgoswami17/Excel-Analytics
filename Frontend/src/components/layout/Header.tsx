@@ -74,7 +74,7 @@ const Header: React.FC = () => {
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                     <User size={16} className="text-blue-600" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">{user.email}</span>
+                  <span className="text-sm font-medium text-gray-700">{user.username}</span>
                 </div>
                 <Button 
                   variant="ghost" 

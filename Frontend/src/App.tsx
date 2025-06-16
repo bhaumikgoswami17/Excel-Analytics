@@ -10,6 +10,7 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import OtpVerifyPage from './pages/OtpVerifyPage';
+import { Toaster } from 'react-hot-toast';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -104,6 +105,26 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <Toaster
+  position="top-center"
+  toastOptions={{
+    success: {
+      duration: 4000,
+      style: {
+        background: '#e0ffe5',
+        color: '#333',
+      },
+    },
+    error: {
+      duration: 4000,
+      style: {
+        background: '#ffe0e0',
+        color: '#333',
+      },
+    },
+  }}
+/>
+
         <div className="flex flex-col min-h-screen">
           <Header />
           <main className="flex-grow pt-16">

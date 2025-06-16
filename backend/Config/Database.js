@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
 
-const { MONGO_URL } = process.env;  // Changed from MONGODB_URL to MONGO_URL
+const { MONGO_URL } = process.env; 
 
 export const connect = () => {
   mongoose

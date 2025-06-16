@@ -1,32 +1,27 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/user.js';
 import { sendOTP } from '../utils/sendEmail.js';
+import { generateToken } from '../utils/generateToken.js'; // ✅ Import generateToken
 
-// Generate JWT Token
-const generateToken = (user) => {
-  return jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET || 'defaultsecret',
-    { expiresIn: '1d' }
-  );
-};
-
+// @desc Register new user with OTP verification
 export const registerUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, username } = req.body;
 
-  if (!email || !password)
-    return res.status(400).json({ message: 'Email and password are required' });
+  if (!email || !password || !username) {
+    return res.status(400).json({ message: 'Email, username, and password are required' });
+  }
 
   try {
     const existingUser = await User.findOne({ email });
-    if (existingUser)
+    if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
+    }
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // expires in 10 mins
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins from now
 
     const newUser = new User({
+      username,
       email,
       password,
       otp,
@@ -44,34 +39,44 @@ export const registerUser = async (req, res) => {
   }
 };
 
+// @desc Verify OTP and activate user account
 export const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
 
-  if (!email || !otp)
+  if (!email || !otp) {
     return res.status(400).json({ message: 'Email and OTP are required' });
+  }
 
   try {
     const user = await User.findOne({ email });
 
-    if (!user)
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
+    }
 
-    if (user.isVerified)
+    if (user.isVerified) {
       return res.status(400).json({ message: 'User already verified' });
+    }
 
-    if (user.otp !== otp || user.otpExpires < Date.now())
+    if (user.otp !== otp || user.otpExpires < Date.now()) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
 
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
 
-    const token = generateToken(user);
+    const token = generateToken(user); // ✅ Updated
 
     res.status(200).json({
       message: 'OTP verified successfully',
-      user: { id: user._id, email: user.email, role: user.role },
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
       token,
     });
   } catch (err) {
@@ -80,31 +85,38 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-// @desc    Login user (only if verified)
-// @route   POST /api/auth/login
-// @access  Public
+// @desc Login user (only if verified)
 export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
-  if (!email || !password)
-    return res.status(400).json({ message: 'Email and password are required' });
+  if (!username || !password) {
+    return res.status(400).json({ message: 'Username and password are required' });
+  }
 
   try {
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(400).json({ message: 'Invalid email or password' });
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid username or password' });
+    }
 
-    if (!user.isVerified)
+    if (!user.isVerified) {
       return res.status(403).json({ message: 'Account not verified. Please verify OTP.' });
+    }
 
     const isMatch = await user.comparePassword(password);
-    if (!isMatch)
-      return res.status(400).json({ message: 'Invalid email or password' });
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid username or password' });
+    }
 
-    const token = generateToken(user);
+    const token = generateToken(user); // ✅ Updated
 
-    res.json({
-      user: { id: user._id, email: user.email, role: user.role },
+    res.status(200).json({
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
       token,
     });
   } catch (err) {

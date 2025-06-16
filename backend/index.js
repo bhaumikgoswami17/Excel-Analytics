@@ -18,8 +18,7 @@ app.use(cors({
 }));
 
 app.use(express.json()); // To parse JSON bodies
-app.use('/api', uploadRoute);
-
+app.use('/api/excel', uploadRoute);
 connect();
 
 app.get("/", (req, res) => {
