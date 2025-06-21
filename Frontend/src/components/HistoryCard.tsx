@@ -122,6 +122,15 @@ const HistoryCard: React.FC<HistoryCardProps> = ({ item, onDelete }) => {
                 <ExternalLink size={16} className="ml-1" />
               </Button>
             </Link>
+             <Link to={`/analysis/${item.id}#data`} className="w-full">
+    <Button 
+      fullWidth 
+      variant="outline" 
+      className="flex items-center justify-center"
+    >      <span>View Data</span>
+      <FileSpreadsheet size={16} className="ml-1" />
+    </Button>
+  </Link>
           </div>
         </CardContent>
       </Card>

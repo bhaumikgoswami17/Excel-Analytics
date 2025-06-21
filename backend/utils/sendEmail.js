@@ -28,3 +28,21 @@ export const sendOTP = async (email, otp) => {
     throw new Error('Could not send email');
   }
 };
+
+export const sendResetEmail = async (email, resetLink) => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL, // your email
+      pass: process.env.EMAIL_PASS, // app password
+    },
+  });
+
+  await transporter.sendMail({
+    from: `"Support Team" <${process.env.EMAIL}>`,
+    to: email,
+    subject: 'Password Reset',
+    html: `<p>You requested a password reset</p>
+          <a href="${resetLink}">Click here to reset your password</a>`,
+  });
+};

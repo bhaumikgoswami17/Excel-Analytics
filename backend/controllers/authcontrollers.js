@@ -124,3 +124,19 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Server error during login' });
   }
 };
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  const token = crypto.randomBytes(32).toString('hex');
+  user.resetToken = token;
+  user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
+  await user.save();
+
+  const resetLink = `http://localhost:3000/reset-password/${token}`;
+  await sendResetEmail(user.email, resetLink);
+
+  res.json({ message: 'Password reset link sent to your email.' });
+};

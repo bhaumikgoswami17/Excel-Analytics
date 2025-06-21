@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import OtpVerifyPage from './pages/OtpVerifyPage';
 import { Toaster } from 'react-hot-toast';
 
+
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
