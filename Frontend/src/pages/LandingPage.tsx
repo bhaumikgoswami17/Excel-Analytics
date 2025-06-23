@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart2, FileSpreadsheet, Download, Zap, Users, Settings } from 'lucide-react';
+import { BarChart2, FileSpreadsheet, Download, Zap, Settings } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Card, { CardContent } from '../components/ui/Card';
 

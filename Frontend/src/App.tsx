@@ -11,6 +11,7 @@ import Footer from './components/layout/Footer';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import OtpVerifyPage from './pages/OtpVerifyPage';
 import { Toaster } from 'react-hot-toast';
+import ProfilePage from './pages/ProfilePage'; 
 
 
 // Protected route component
@@ -61,7 +62,15 @@ const AppRoutes = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/verify-otp" element={<OtpVerifyPage />} />
-      
+      <Route
+  path="/profile"
+  element={
+    <ProtectedRoute>
+      <ProfilePage />
+    </ProtectedRoute>
+  }
+/>
+   
       {/* Protected routes */}
       <Route 
         path="/dashboard" 

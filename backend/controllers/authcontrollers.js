@@ -1,9 +1,17 @@
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import bcrypt from 'bcryptjs';
 import User from '../models/user.js';
 import { sendOTP } from '../utils/sendEmail.js';
-import { generateToken } from '../utils/generateToken.js'; // ✅ Import generateToken
+import { generateToken } from '../utils/generateToken.js';
+import cloudinary from '../utils/cloudinary.js';
+import streamifier from 'streamifier';
 
-// @desc Register new user with OTP verification
+// Multer config for file uploads
+const storage = multer.memoryStorage();
+export const upload = multer({ storage });
+
+// @desc Register new user
 export const registerUser = async (req, res) => {
   const { email, password, username } = req.body;
 
@@ -18,12 +26,12 @@ export const registerUser = async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins from now
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     const newUser = new User({
-      username,
       email,
       password,
+      username,
       otp,
       otpExpires,
       isVerified: false,
@@ -39,7 +47,7 @@ export const registerUser = async (req, res) => {
   }
 };
 
-// @desc Verify OTP and activate user account
+// @desc Verify OTP
 export const verifyOtp = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -50,9 +58,7 @@ export const verifyOtp = async (req, res) => {
   try {
     const user = await User.findOne({ email });
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (user.isVerified) {
       return res.status(400).json({ message: 'User already verified' });
@@ -67,7 +73,7 @@ export const verifyOtp = async (req, res) => {
     user.otpExpires = undefined;
     await user.save();
 
-    const token = generateToken(user); // ✅ Updated
+    const token = generateToken(user);
 
     res.status(200).json({
       message: 'OTP verified successfully',
@@ -76,6 +82,7 @@ export const verifyOtp = async (req, res) => {
         email: user.email,
         username: user.username,
         role: user.role,
+        avatar: user.avatar || '',
       },
       token,
     });
@@ -85,7 +92,7 @@ export const verifyOtp = async (req, res) => {
   }
 };
 
-// @desc Login user (only if verified)
+// @desc Login user
 export const loginUser = async (req, res) => {
   const { username, password } = req.body;
 
@@ -95,20 +102,16 @@ export const loginUser = async (req, res) => {
 
   try {
     const user = await User.findOne({ username });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid username or password' });
-    }
+    if (!user) return res.status(400).json({ message: 'Invalid username or password' });
 
     if (!user.isVerified) {
       return res.status(403).json({ message: 'Account not verified. Please verify OTP.' });
     }
 
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid username or password' });
-    }
+    if (!isMatch) return res.status(400).json({ message: 'Invalid username or password' });
 
-    const token = generateToken(user); // ✅ Updated
+    const token = generateToken(user);
 
     res.status(200).json({
       user: {
@@ -116,6 +119,7 @@ export const loginUser = async (req, res) => {
         email: user.email,
         username: user.username,
         role: user.role,
+        avatar: user.avatar || '',
       },
       token,
     });
@@ -125,18 +129,71 @@ export const loginUser = async (req, res) => {
   }
 };
 
-export const forgotPassword = async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
+// @desc Get user profile
+export const getUserProfile = async (req, res) => {
+  const user = req.user;
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const token = crypto.randomBytes(32).toString('hex');
-  user.resetToken = token;
-  user.resetTokenExpiry = Date.now() + 3600000; // 1 hour
-  await user.save();
+  res.json({
+    id: user._id,
+    email: user.email,
+    username: user.username,
+    role: user.role,
+    avatar: user.avatar || '',
+  });
+};
 
-  const resetLink = `http://localhost:3000/reset-password/${token}`;
-  await sendResetEmail(user.email, resetLink);
+// Utility function to handle Cloudinary stream upload from buffer
+const streamUpload = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type: 'image',
+        folder: 'avatars',
+        transformation: [{ width: 512, height: 512, crop: 'limit' }],
+      },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      }
+    );
 
-  res.json({ message: 'Password reset link sent to your email.' });
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { username, password } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (username) user.username = username;
+    if (password) user.password = password;
+
+    // 👇 Upload avatar buffer (if present)
+    if (req.file) {
+      const uploadResult = await streamUpload(req.file.buffer);
+      user.avatar = uploadResult.secure_url;
+    }
+
+    await user.save();
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Server error while updating profile' });
+  }
 };

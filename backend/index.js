@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { connect } from './Config/Database.js';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/auth.js';       // ✅ Only this one is needed
 import uploadRoute from './routes/upload.js'; 
 
 dotenv.config();
@@ -17,8 +17,13 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json()); // To parse JSON bodies
-app.use('/api/excel', uploadRoute);
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Mount routes
+app.use('/api/auth', authRoutes);   // ✅ Correct route for all auth-related
+app.use('/api/excel', uploadRoute); // ✅ Excel routes
+
+// Connect DB
 connect();
 
 app.get("/", (req, res) => {
@@ -27,9 +32,6 @@ app.get("/", (req, res) => {
     message: "Your server is up and running ...",
   });
 });
-
-// Use the auth routes
-app.use('/api/auth', authRoutes);
 
 app.listen(PORT, () => {
   console.log(`App is listening at ${PORT}`);

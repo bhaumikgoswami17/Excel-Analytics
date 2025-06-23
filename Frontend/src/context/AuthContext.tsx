@@ -5,13 +5,20 @@ interface User {
   id: string;
   email: string;
   username?: string;
+  avatar?: string;
   role: 'user' | 'admin';
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string, username: string, onSuccess?: () => void) => Promise<boolean>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  login: (username: string, password: string) => Promise<boolean>;
+  register: (
+    email: string,
+    password: string,
+    username: string,
+    onSuccess?: () => void
+  ) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
   error: string | null;
@@ -36,36 +43,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ Load profile on refresh
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser && storedUser !== 'undefined') {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (error) {
-      console.error('Failed to parse stored user:', error);
-      localStorage.removeItem('user');
-    }
-    setIsLoading(false);
-  }, []);
+    const fetchProfile = async () => {
+      const token = localStorage.getItem('token');
 
-  const authFetch = async (url: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('token');
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-      ...(token && { Authorization: `Bearer ${token}` }),
+      if (token) {
+        try {
+          const res = await fetch(`${BASE_URL}/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!res.ok) throw new Error('Failed to fetch profile');
+          const userData = await res.json();
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } catch (err) {
+          console.error('Error fetching profile:', err);
+          setUser(null);
+          localStorage.removeItem('user');
+          localStorage.removeItem('token');
+        }
+      } else {
+        setUser(null);
+      }
+
+      setIsLoading(false);
     };
 
-    const response = await fetch(url, { ...options, headers });
+    fetchProfile();
+  }, []);
 
-    if (!response.ok) {
-      const text = await response.text(); // log raw response
-      console.error('Raw error response:', text);
-      throw new Error('Request failed');
+  // ✅ Smart fetch with token & content-type
+  const authFetch = async (url: string, options: any = {}) => {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {};
+
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
     }
 
-    return response.json();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Request failed');
+    }
+
+    return await response.json();
   };
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -123,7 +158,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       await response.json();
-
       toast.success('🎉 Registration successful! Please verify OTP.');
       onSuccess?.();
       return true;
@@ -145,7 +179,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading, error, authFetch }}>
+    <AuthContext.Provider
+      value={{ user, setUser, login, register, logout, isLoading, error, authFetch }}
+    >
       {children}
     </AuthContext.Provider>
   );
